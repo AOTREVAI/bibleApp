@@ -3,87 +3,61 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="#f5f5f5">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Bible API Demo"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginBottom="16dp" />
-
+    <!-- Header Section -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:background="#2196F3"
+        android:padding="16dp"
+        android:elevation="4dp">
+
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="← Back"
+            android:textColor="@android:color/white"
+            android:background="?attr/selectableItemBackground"
+            android:layout_marginEnd="16dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/headerTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Bible Explorer"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:gravity="center_vertical" />
 
         <Button
             android:id="@+id/getBiblesBtn"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="Get Bibles"
-            android:layout_marginEnd="4dp" />
-
-        <Button
-            android:id="@+id/getBooksBtn"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Get Books"
-            android:layout_marginStart="4dp" />
+            android:textColor="@android:color/white"
+            android:background="?attr/selectableItemBackground" />
 
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
-
-        <Button
-            android:id="@+id/getChaptersBtn"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Get Chapters"
-            android:layout_marginEnd="4dp" />
-
-        <Button
-            android:id="@+id/getVersesBtn"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Get Verses"
-            android:layout_marginStart="4dp" />
-
-    </LinearLayout>
-
-    <Button
-        android:id="@+id/getPassageBtn"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Get Passage Content"
-        android:layout_marginBottom="16dp" />
-
+    <!-- Content Section -->
     <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="@android:color/white"
-        android:padding="8dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <TextView
-            android:id="@+id/resultTextView"
+        <LinearLayout
+            android:id="@+id/contentLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Click 'Get Bibles' to start fetching data from the API"
-            android:textSize="14sp"
-            android:fontFamily="monospace"
-            android:textIsSelectable="true" />
+            android:orientation="vertical"
+            android:padding="8dp" />
 
     </ScrollView>
 
