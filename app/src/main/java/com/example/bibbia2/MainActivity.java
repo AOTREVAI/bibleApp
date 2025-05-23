@@ -9,7 +9,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-
+import android.text.Html;
+import android.os.Build;
+// Optional, if your HTML content might contain links you want to be clickable
+// import android.text.method.LinkMovementMethod;
 import com.example.bibbia2.BibleApiClient;
 import com.example.bibbia2.Bible;
 import com.example.bibbia2.Book;
@@ -317,18 +320,39 @@ public class MainActivity extends AppCompatActivity {
                     infoView.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.darker_gray));
                     contentLayout.addView(infoView);
 
-                    // Passage content
+                    // Passage content - MODIFIED PART
                     TextView contentView = new TextView(MainActivity.this);
-                    contentView.setText(passage.getContent());
+                    String htmlContent = passage.getContent();
+
+                    if (htmlContent != null && !htmlContent.isEmpty()) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            contentView.setText(Html.fromHtml(htmlContent, Html.FROM_HTML_MODE_LEGACY));
+                        } else {
+                            // noinspection deprecation
+                            contentView.setText(Html.fromHtml(htmlContent));
+                        }
+                        // Optional: If your HTML might contain <a> tags and you want them to be clickable
+                        // contentView.setMovementMethod(LinkMovementMethod.getInstance());
+                    } else {
+                        contentView.setText("No content available for this passage.");
+                    }
+
                     contentView.setTextSize(16);
                     contentView.setPadding(16, 8, 16, 16);
-                    contentView.setLineSpacing(4, 1.2f);
+                    contentView.setLineSpacing(4, 1.2f); // Adjust line spacing as needed for readability
                     contentLayout.addView(contentView);
 
                     // Copyright notice
                     if (passage.getCopyright() != null && !passage.getCopyright().isEmpty()) {
                         TextView copyrightView = new TextView(MainActivity.this);
-                        copyrightView.setText(passage.getCopyright());
+                        // The copyright itself might also contain HTML, apply the same logic if needed
+                        String copyrightHtml = passage.getCopyright();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            copyrightView.setText(Html.fromHtml(copyrightHtml, Html.FROM_HTML_MODE_LEGACY));
+                        } else {
+                            // noinspection deprecation
+                            copyrightView.setText(Html.fromHtml(copyrightHtml));
+                        }
                         copyrightView.setTextSize(12);
                         copyrightView.setPadding(16, 16, 16, 8);
                         copyrightView.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.darker_gray));
@@ -350,7 +374,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
     // UI Helper Methods
     private Button createBibleButton(Bible bible) {
         Button button = new Button(this);
