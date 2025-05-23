@@ -8,6 +8,8 @@ public class Verse {
     private String chapterId;
     private String reference;
 
+    private String content;
+
     // Getters and Setters
     public String getId() {
         return id;
@@ -36,7 +38,6 @@ public class Verse {
     public String getBookId() {
         return bookId;
     }
-
     public void setBookId(String bookId) {
         this.bookId = bookId;
     }
@@ -56,4 +57,8 @@ public class Verse {
     public void setReference(String reference) {
         this.reference = reference;
     }
+    public String getContent() {
+        return content; // Ensure this returns the HTML content
+    }
+
 }

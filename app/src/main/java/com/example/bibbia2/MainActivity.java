@@ -33,15 +33,20 @@ public class MainActivity extends AppCompatActivity {
     // Navigation state
     private enum NavigationState {
         INITIAL,
-        LANGUAGE_SELECTION, // New state
+        LANGUAGE_SELECTION,
         BIBLES_LIST,
         BOOKS,
         CHAPTERS,
-        VERSES_OR_PASSAGE
+        VERSES_OR_PASSAGE, // This state was for choosing between list or full chapter
+        VERSES_LIST,       // New state specifically for the list of verses
+        SINGLE_VERSE_DISPLAY // New state for showing one verse's content
     }
 
 
+
     private NavigationState currentState = NavigationState.INITIAL;
+    // ... (selectedBible, selectedBook, selectedChapter)
+    private Verse selectedVerse; //
     private String selectedLanguageId;     // To store the ID of the selected language
     private String selectedLanguageName;   // To store the name of the selected language
     private Bible selectedBible;
@@ -125,15 +130,13 @@ public class MainActivity extends AppCompatActivity {
                 setupInitialView();
                 break;
             case BIBLES_LIST:
-                showLanguageSelectionScreen(); // Go back to language selection
+                showLanguageSelectionScreen();
                 break;
             case BOOKS:
-                if (selectedLanguageId != null || selectedLanguageName != null) { // Check if a language context exists
-                    // Go back to the list of Bibles for the previously selected language
+                if (selectedLanguageId != null || selectedLanguageName != null) {
                     fetchBiblesList(selectedLanguageId, selectedLanguageName);
                 } else {
-                    // Fallback if somehow language context was lost, though unlikely with current flow
-                    showLanguageSelectionScreen();
+                    showLanguageSelectionScreen(); // Fallback
                 }
                 break;
             case CHAPTERS:
@@ -141,12 +144,24 @@ public class MainActivity extends AppCompatActivity {
                     fetchBooks(selectedBible);
                 }
                 break;
-            case VERSES_OR_PASSAGE:
+            case VERSES_OR_PASSAGE: // Navigating back from the "View Verses / Read Chapter" choice screen
                 if (selectedBible != null && selectedBook != null) {
                     fetchChapters(selectedBible, selectedBook);
                 }
                 break;
-            default: // Includes INITIAL
+            case VERSES_LIST: // Navigating back from the list of verses
+                if (selectedBible != null && selectedBook != null && selectedChapter != null) {
+                    // Go back to the screen where user chose "View Verses List" or "Read Full Chapter"
+                    showChapterOptions(selectedBible, selectedBook, selectedChapter);
+                }
+                break;
+            case SINGLE_VERSE_DISPLAY: // Navigating back from showing a single verse
+                if (selectedBible != null && selectedChapter != null) {
+                    // Go back to the list of verses for the current chapter
+                    fetchVersesListDisplay(selectedBible, selectedChapter);
+                }
+                break;
+            default:
                 setupInitialView();
                 break;
         }
@@ -287,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showChapterOptions(Bible bible, Book book, Chapter chapter) {
         selectedChapter = chapter;
-        updateNavigationState(NavigationState.VERSES_OR_PASSAGE);
+        updateNavigationState(NavigationState.VERSES_OR_PASSAGE); // This state remains as the choice screen
         headerTextView.setText(chapter.getReference());
         clearContent();
 
@@ -297,11 +312,11 @@ public class MainActivity extends AppCompatActivity {
         infoText.setPadding(16, 16, 16, 16);
         contentLayout.addView(infoText);
 
-        // Button to fetch verses
+        // Button to fetch verses list
         Button versesButton = new Button(this);
         versesButton.setText("View Verses List");
         versesButton.setLayoutParams(createButtonLayoutParams());
-        versesButton.setOnClickListener(v -> fetchVerses(bible, chapter));
+        versesButton.setOnClickListener(v -> fetchVersesListDisplay(bible, chapter)); // Changed from fetchVerses
         contentLayout.addView(versesButton);
 
         // Button to fetch passage content
@@ -312,7 +327,9 @@ public class MainActivity extends AppCompatActivity {
         contentLayout.addView(passageButton);
     }
 
-    private void fetchVerses(Bible bible, Chapter chapter) {
+    // Renamed from fetchVerses and modified
+    private void fetchVersesListDisplay(Bible bible, Chapter chapter) {
+        updateNavigationState(NavigationState.VERSES_LIST); // New specific state
         headerTextView.setText("Verses in " + chapter.getReference());
         clearContent();
         showLoadingMessage("Loading verses...");
@@ -323,24 +340,25 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     clearContent();
 
-                    if (verses.length == 0) {
+                    if (verses == null || verses.length == 0) {
                         showErrorMessage("No verses found in this chapter.");
                         return;
                     }
 
                     TextView infoText = new TextView(MainActivity.this);
-                    infoText.setText("Found " + verses.length + " verses:");
+                    infoText.setText("Found " + verses.length + " verses (click to view content):");
                     infoText.setTextSize(14);
                     infoText.setPadding(16, 16, 16, 8);
                     infoText.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.darker_gray));
                     contentLayout.addView(infoText);
 
                     for (Verse verse : verses) {
-                        TextView verseView = createVerseView(verse);
-                        contentLayout.addView(verseView);
+                        // createVerseView will now make it clickable and take the full Verse object
+                        Button verseButton = createVerseButton(verse);
+                        contentLayout.addView(verseButton);
                     }
 
-                    // Add button to read full chapter
+                    // Optional: Add button to read full chapter from this screen too
                     Button readChapterButton = new Button(MainActivity.this);
                     readChapterButton.setText("Read Full Chapter Text");
                     readChapterButton.setLayoutParams(createButtonLayoutParams());
@@ -355,7 +373,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
     private void fetchPassage(Bible bible, Chapter chapter) {
         headerTextView.setText("Reading " + chapter.getReference());
         clearContent();
@@ -419,7 +436,7 @@ public class MainActivity extends AppCompatActivity {
                     Button viewVersesButton = new Button(MainActivity.this);
                     viewVersesButton.setText("View Verses List");
                     viewVersesButton.setLayoutParams(createButtonLayoutParams());
-                    viewVersesButton.setOnClickListener(v -> fetchVerses(bible, chapter));
+                    viewVersesButton.setOnClickListener(v -> fetchVersesListDisplay(bible, chapter));
                     contentLayout.addView(viewVersesButton);
                 });
             }
@@ -472,18 +489,51 @@ public class MainActivity extends AppCompatActivity {
         return button;
     }
 
-    private TextView createVerseView(Verse verse) {
-        TextView textView = new TextView(this);
-        textView.setText("• " + verse.getReference());
-        textView.setTextSize(14);
-        textView.setPadding(24, 8, 16, 8);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        params.setMargins(0, 4, 0, 4);
-        textView.setLayoutParams(params);
-        return textView;
+    // Was createVerseView (TextView), now createVerseButton (Button)
+    private Button createVerseButton(Verse verse) {
+        Button button = new Button(this);
+        button.setText(verse.getReference()); // e.g., "John 3:16"
+        button.setLayoutParams(createButtonLayoutParams()); // Use existing layout params for consistency
+        button.setOnClickListener(v -> {
+            Toast.makeText(this, "Showing: " + verse.getReference(), Toast.LENGTH_SHORT).show();
+            showSingleVerseContent(verse);
+        });
+        return button;
+    }
+    private void showSingleVerseContent(Verse verse) {
+        selectedVerse = verse; // Store if needed for other actions, or just use the passed 'verse'
+        updateNavigationState(NavigationState.SINGLE_VERSE_DISPLAY);
+        headerTextView.setText(verse.getReference());
+        clearContent();
+
+        if (verse.getContent() == null || verse.getContent().isEmpty()) {
+            showErrorMessage("No content available for this verse.");
+            return;
+        }
+
+        // TextView to display the verse content
+        TextView verseContentView = new TextView(this);
+        String htmlContent = verse.getContent();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            verseContentView.setText(Html.fromHtml(htmlContent, Html.FROM_HTML_MODE_LEGACY));
+        } else {
+            // noinspection deprecation
+            verseContentView.setText(Html.fromHtml(htmlContent));
+        }
+        // Optional: if verse HTML contains links
+        // verseContentView.setMovementMethod(LinkMovementMethod.getInstance());
+
+        verseContentView.setTextSize(18); // Slightly larger for focused reading
+        verseContentView.setPadding(16, 16, 16, 16);
+        verseContentView.setLineSpacing(6, 1.3f); // Adjust for readability
+        contentLayout.addView(verseContentView);
+
+        // Optionally, add chapter's copyright if available and relevant here
+        // This depends on your `Passage` object structure or if `Verse` also has copyright
+        // For simplicity, we might omit it here or fetch the chapter's full passage metadata
+        // if copyright is crucial at the single verse display level.
+        // For now, let's assume the chapter's copyright (shown with full passage) covers it.
     }
 
     private LinearLayout.LayoutParams createButtonLayoutParams() {
