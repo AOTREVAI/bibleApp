@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Bible API Demo"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <Button
+            android:id="@+id/getBiblesBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Get Bibles"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/getBooksBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Get Books"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <Button
+            android:id="@+id/getChaptersBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Get Chapters"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/getVersesBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Get Verses"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/getPassageBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Get Passage Content"
+        android:layout_marginBottom="16dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@android:color/white"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/resultTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Click 'Get Bibles' to start fetching data from the API"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true" />
+
+    </ScrollView>
+
+</LinearLayout>
