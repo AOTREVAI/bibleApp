@@ -32,13 +32,22 @@ public class MainActivity extends AppCompatActivity {
 
     // Navigation state
     private enum NavigationState {
-        INITIAL, BIBLES, BOOKS, CHAPTERS, VERSES_OR_PASSAGE
+        INITIAL,
+        LANGUAGE_SELECTION, // New state
+        BIBLES_LIST,
+        BOOKS,
+        CHAPTERS,
+        VERSES_OR_PASSAGE
     }
 
+
     private NavigationState currentState = NavigationState.INITIAL;
+    private String selectedLanguageId;     // To store the ID of the selected language
+    private String selectedLanguageName;   // To store the name of the selected language
     private Bible selectedBible;
     private Book selectedBook;
     private Chapter selectedChapter;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +70,8 @@ public class MainActivity extends AppCompatActivity {
         getBiblesBtn = findViewById(R.id.getBiblesBtn);
 
         backButton.setOnClickListener(v -> navigateBack());
-        getBiblesBtn.setOnClickListener(v -> fetchBibles());
+        // getBiblesBtn.setOnClickListener(v -> fetchBibles()); // Old
+        getBiblesBtn.setOnClickListener(v -> showLanguageSelectionScreen()); // New
     }
 
     private void setupInitialView() {
@@ -77,6 +87,33 @@ public class MainActivity extends AppCompatActivity {
         welcomeText.setPadding(16, 16, 16, 16);
         contentLayout.addView(welcomeText);
     }
+    private void showLanguageSelectionScreen() {
+        updateNavigationState(NavigationState.LANGUAGE_SELECTION);
+        headerTextView.setText("Select a Language");
+        clearContent();
+        // Reset selected language in case we are navigating back
+        selectedLanguageId = null;
+        selectedLanguageName = null;
+
+        // Example Languages (Ideally, fetch these from API or a more robust source)
+        addLanguageButton("All Languages", null); // null for all languages
+        addLanguageButton("English", "eng");
+        addLanguageButton("Italian", "ita");
+        addLanguageButton("Spanish", "spa");
+        addLanguageButton("French", "fra");
+        // Add more languages as needed
+    }
+
+    private void addLanguageButton(String languageName, String languageId) {
+        Button langButton = new Button(this);
+        langButton.setText(languageName);
+        langButton.setLayoutParams(createButtonLayoutParams());
+        langButton.setOnClickListener(v -> {
+            Toast.makeText(this, "Selected Language: " + languageName, Toast.LENGTH_SHORT).show();
+            fetchBiblesList(languageId, languageName);
+        });
+        contentLayout.addView(langButton);
+    }
 
     private void clearContent() {
         contentLayout.removeAllViews();
@@ -84,11 +121,20 @@ public class MainActivity extends AppCompatActivity {
 
     private void navigateBack() {
         switch (currentState) {
-            case BIBLES:
+            case LANGUAGE_SELECTION:
                 setupInitialView();
                 break;
+            case BIBLES_LIST:
+                showLanguageSelectionScreen(); // Go back to language selection
+                break;
             case BOOKS:
-                fetchBibles();
+                if (selectedLanguageId != null || selectedLanguageName != null) { // Check if a language context exists
+                    // Go back to the list of Bibles for the previously selected language
+                    fetchBiblesList(selectedLanguageId, selectedLanguageName);
+                } else {
+                    // Fallback if somehow language context was lost, though unlikely with current flow
+                    showLanguageSelectionScreen();
+                }
                 break;
             case CHAPTERS:
                 if (selectedBible != null) {
@@ -100,6 +146,9 @@ public class MainActivity extends AppCompatActivity {
                     fetchChapters(selectedBible, selectedBook);
                 }
                 break;
+            default: // Includes INITIAL
+                setupInitialView();
+                break;
         }
     }
 
@@ -109,26 +158,34 @@ public class MainActivity extends AppCompatActivity {
         getBiblesBtn.setVisibility(newState == NavigationState.INITIAL ? View.VISIBLE : View.GONE);
     }
 
-    private void fetchBibles() {
-        updateNavigationState(NavigationState.BIBLES);
-        headerTextView.setText("Select a Bible Translation");
+    // Renamed from fetchBibles to fetchBiblesList and modified
+    private void fetchBiblesList(String languageId, String languageDisplayName) {
+        selectedLanguageId = languageId; // Store for back navigation and context
+        selectedLanguageName = languageDisplayName; // Store for display
+
+        updateNavigationState(NavigationState.BIBLES_LIST);
+        if (languageId != null && !languageDisplayName.equals("All Languages")) {
+            headerTextView.setText("Bibles in " + languageDisplayName);
+        } else {
+            headerTextView.setText("Select a Bible Translation");
+        }
         clearContent();
         showLoadingMessage("Loading Bible translations...");
 
-        apiClient.getBibles(new BibleApiClient.BiblesCallback() {
+        // Pass the languageId to your apiClient.
+        // If languageId is null, your apiClient should fetch all bibles.
+        apiClient.getBibles(languageId, new BibleApiClient.BiblesCallback() {
             @Override
             public void onSuccess(Bible[] bibles) {
                 runOnUiThread(() -> {
                     clearContent();
 
                     if (bibles.length == 0) {
-                        showErrorMessage("No Bible translations found.");
+                        showErrorMessage("No Bible translations found for " + (languageDisplayName.equals("All Languages") ? "the selected criteria" : languageDisplayName) + ".");
                         return;
                     }
 
-                    // Show first 20 bibles to avoid overwhelming the UI
                     int maxBibles = Math.min(bibles.length, 100);
-
                     TextView infoText = new TextView(MainActivity.this);
                     infoText.setText("Found " + bibles.length + " Bible translations. Showing first " + maxBibles + ":");
                     infoText.setTextSize(14);
@@ -138,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
 
                     for (int i = 0; i < maxBibles; i++) {
                         Bible bible = bibles[i];
-                        Button bibleButton = createBibleButton(bible);
+                        Button bibleButton = createBibleButton(bible); // createBibleButton remains largely the same
                         contentLayout.addView(bibleButton);
                     }
                 });
@@ -150,7 +207,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
     private void fetchBooks(Bible bible) {
         selectedBible = bible;
         updateNavigationState(NavigationState.BOOKS);

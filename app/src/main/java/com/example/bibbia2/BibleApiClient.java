@@ -99,10 +99,14 @@ public class BibleApiClient {
     }
 
     // API Methods
-    public void getBibles(BiblesCallback callback) {
+    public void getBibles(String languageId, BiblesCallback callback) {
         String url = BASE_URL + "/bibles";
-        
-        JsonObjectRequest request = new JsonObjectRequest(
+        if (languageId != null && !languageId.isEmpty()) {
+            url += "?language=" + languageId;
+        }
+
+
+            JsonObjectRequest request = new JsonObjectRequest(
             Request.Method.GET,
             url,
             null,
