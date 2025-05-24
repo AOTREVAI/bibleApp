@@ -15,7 +15,7 @@ import android.os.Build;
 
 
 public class MainActivity extends AppCompatActivity {
-    private static final String API_KEY = "a3ac16beb15eb10eea3703389aeeab58";
+    private static final String API_KEY = "your-api-key-here";
 
     private BibleApiClient apiClient;
     private ScrollView scrollView;
