@@ -19,9 +19,12 @@ import com.example.bibbia2.Book;
 import com.example.bibbia2.Chapter;
 import com.example.bibbia2.Passage;
 import com.example.bibbia2.Verse;
+// Import SingleVerse for the new functionality
+import com.example.bibbia2.SingleVerse;
+
 
 public class MainActivity extends AppCompatActivity {
-    private static final String API_KEY = "a3ac16beb15eb10eea3703389aeeab58"; // Replace with your actual API key
+    private static final String API_KEY = "a3ac16beb15eb10eea3703389aeeab58";
 
     private BibleApiClient apiClient;
     private ScrollView scrollView;
@@ -30,28 +33,26 @@ public class MainActivity extends AppCompatActivity {
     private Button backButton;
     private Button getBiblesBtn;
 
-    // Navigation state
+   
     private enum NavigationState {
         INITIAL,
         LANGUAGE_SELECTION,
         BIBLES_LIST,
         BOOKS,
         CHAPTERS,
-        VERSES_OR_PASSAGE, // This state was for choosing between list or full chapter
-        VERSES_LIST,       // New state specifically for the list of verses
-        SINGLE_VERSE_DISPLAY // New state for showing one verse's content
+        VERSES_OR_PASSAGE,
+        VERSES_LIST,
+        SINGLE_VERSE_DISPLAY
     }
 
-
-
     private NavigationState currentState = NavigationState.INITIAL;
-    // ... (selectedBible, selectedBook, selectedChapter)
-    private Verse selectedVerse; //
-    private String selectedLanguageId;     // To store the ID of the selected language
-    private String selectedLanguageName;   // To store the name of the selected language
+    private String selectedLanguageId;
+    private String selectedLanguageName;
     private Bible selectedBible;
     private Book selectedBook;
     private Chapter selectedChapter;
+   
+    private SingleVerse currentDisplayingVerse;
 
 
     @Override
@@ -59,10 +60,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize API client
         apiClient = new BibleApiClient(this, API_KEY);
-
-        // Initialize UI elements
         initializeViews();
         setupInitialView();
     }
@@ -75,8 +73,7 @@ public class MainActivity extends AppCompatActivity {
         getBiblesBtn = findViewById(R.id.getBiblesBtn);
 
         backButton.setOnClickListener(v -> navigateBack());
-        // getBiblesBtn.setOnClickListener(v -> fetchBibles()); // Old
-        getBiblesBtn.setOnClickListener(v -> showLanguageSelectionScreen()); // New
+        getBiblesBtn.setOnClickListener(v -> showLanguageSelectionScreen());
     }
 
     private void setupInitialView() {
@@ -85,28 +82,28 @@ public class MainActivity extends AppCompatActivity {
         backButton.setVisibility(View.GONE);
         getBiblesBtn.setVisibility(View.VISIBLE);
         clearContent();
+        currentDisplayingVerse = null;
 
         TextView welcomeText = new TextView(this);
-        welcomeText.setText("Welcome to Bible Explorer!\n\nClick 'Get Bibles' to start exploring different Bible translations.");
+        welcomeText.setText("Benvenuto in Bible Explorer!\n\nSchiaccia 'Get Bibles' per sentire l'immenso amore di nostro signore Gesù Cristo.");
         welcomeText.setTextSize(16);
         welcomeText.setPadding(16, 16, 16, 16);
         contentLayout.addView(welcomeText);
     }
+
     private void showLanguageSelectionScreen() {
         updateNavigationState(NavigationState.LANGUAGE_SELECTION);
         headerTextView.setText("Select a Language");
         clearContent();
-        // Reset selected language in case we are navigating back
+        currentDisplayingVerse = null;
         selectedLanguageId = null;
         selectedLanguageName = null;
 
-        // Example Languages (Ideally, fetch these from API or a more robust source)
-        addLanguageButton("All Languages", null); // null for all languages
+        addLanguageButton("All Languages", null);
         addLanguageButton("English", "eng");
         addLanguageButton("Italian", "ita");
         addLanguageButton("Spanish", "spa");
         addLanguageButton("French", "fra");
-        // Add more languages as needed
     }
 
     private void addLanguageButton(String languageName, String languageId) {
@@ -125,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void navigateBack() {
+        currentDisplayingVerse = null;
         switch (currentState) {
             case LANGUAGE_SELECTION:
                 setupInitialView();
@@ -136,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
                 if (selectedLanguageId != null || selectedLanguageName != null) {
                     fetchBiblesList(selectedLanguageId, selectedLanguageName);
                 } else {
-                    showLanguageSelectionScreen(); // Fallback
+                    showLanguageSelectionScreen();
                 }
                 break;
             case CHAPTERS:
@@ -144,20 +142,18 @@ public class MainActivity extends AppCompatActivity {
                     fetchBooks(selectedBible);
                 }
                 break;
-            case VERSES_OR_PASSAGE: // Navigating back from the "View Verses / Read Chapter" choice screen
+            case VERSES_OR_PASSAGE:
                 if (selectedBible != null && selectedBook != null) {
                     fetchChapters(selectedBible, selectedBook);
                 }
                 break;
-            case VERSES_LIST: // Navigating back from the list of verses
+            case VERSES_LIST:
                 if (selectedBible != null && selectedBook != null && selectedChapter != null) {
-                    // Go back to the screen where user chose "View Verses List" or "Read Full Chapter"
                     showChapterOptions(selectedBible, selectedBook, selectedChapter);
                 }
                 break;
-            case SINGLE_VERSE_DISPLAY: // Navigating back from showing a single verse
+            case SINGLE_VERSE_DISPLAY:
                 if (selectedBible != null && selectedChapter != null) {
-                    // Go back to the list of verses for the current chapter
                     fetchVersesListDisplay(selectedBible, selectedChapter);
                 }
                 break;
@@ -173,11 +169,9 @@ public class MainActivity extends AppCompatActivity {
         getBiblesBtn.setVisibility(newState == NavigationState.INITIAL ? View.VISIBLE : View.GONE);
     }
 
-    // Renamed from fetchBibles to fetchBiblesList and modified
     private void fetchBiblesList(String languageId, String languageDisplayName) {
-        selectedLanguageId = languageId; // Store for back navigation and context
-        selectedLanguageName = languageDisplayName; // Store for display
-
+        selectedLanguageId = languageId;
+        selectedLanguageName = languageDisplayName;
         updateNavigationState(NavigationState.BIBLES_LIST);
         if (languageId != null && !languageDisplayName.equals("All Languages")) {
             headerTextView.setText("Bibles in " + languageDisplayName);
@@ -187,19 +181,16 @@ public class MainActivity extends AppCompatActivity {
         clearContent();
         showLoadingMessage("Loading Bible translations...");
 
-        // Pass the languageId to your apiClient.
-        // If languageId is null, your apiClient should fetch all bibles.
         apiClient.getBibles(languageId, new BibleApiClient.BiblesCallback() {
             @Override
             public void onSuccess(Bible[] bibles) {
                 runOnUiThread(() -> {
                     clearContent();
-
                     if (bibles.length == 0) {
                         showErrorMessage("No Bible translations found for " + (languageDisplayName.equals("All Languages") ? "the selected criteria" : languageDisplayName) + ".");
                         return;
                     }
-
+                   
                     int maxBibles = Math.min(bibles.length, 100);
                     TextView infoText = new TextView(MainActivity.this);
                     infoText.setText("Found " + bibles.length + " Bible translations. Showing first " + maxBibles + ":");
@@ -210,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
 
                     for (int i = 0; i < maxBibles; i++) {
                         Bible bible = bibles[i];
-                        Button bibleButton = createBibleButton(bible); // createBibleButton remains largely the same
+                        Button bibleButton = createBibleButton(bible);
                         contentLayout.addView(bibleButton);
                     }
                 });
@@ -222,6 +213,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     private void fetchBooks(Bible bible) {
         selectedBible = bible;
         updateNavigationState(NavigationState.BOOKS);
@@ -234,19 +226,17 @@ public class MainActivity extends AppCompatActivity {
             public void onSuccess(Book[] books) {
                 runOnUiThread(() -> {
                     clearContent();
-
                     if (books.length == 0) {
                         showErrorMessage("No books found in this Bible.");
                         return;
                     }
-
+                   
                     TextView infoText = new TextView(MainActivity.this);
                     infoText.setText("Found " + books.length + " books:");
                     infoText.setTextSize(14);
                     infoText.setPadding(16, 16, 16, 8);
                     infoText.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.darker_gray));
                     contentLayout.addView(infoText);
-
                     for (Book book : books) {
                         Button bookButton = createBookButton(book);
                         contentLayout.addView(bookButton);
@@ -273,19 +263,17 @@ public class MainActivity extends AppCompatActivity {
             public void onSuccess(Chapter[] chapters) {
                 runOnUiThread(() -> {
                     clearContent();
-
                     if (chapters.length == 0) {
                         showErrorMessage("No chapters found in this book.");
                         return;
                     }
-
+                   
                     TextView infoText = new TextView(MainActivity.this);
                     infoText.setText("Found " + chapters.length + " chapters:");
                     infoText.setTextSize(14);
                     infoText.setPadding(16, 16, 16, 8);
                     infoText.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.darker_gray));
                     contentLayout.addView(infoText);
-
                     for (Chapter chapter : chapters) {
                         Button chapterButton = createChapterButton(chapter);
                         contentLayout.addView(chapterButton);
@@ -302,7 +290,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showChapterOptions(Bible bible, Book book, Chapter chapter) {
         selectedChapter = chapter;
-        updateNavigationState(NavigationState.VERSES_OR_PASSAGE); // This state remains as the choice screen
+        updateNavigationState(NavigationState.VERSES_OR_PASSAGE);
         headerTextView.setText(chapter.getReference());
         clearContent();
 
@@ -312,14 +300,12 @@ public class MainActivity extends AppCompatActivity {
         infoText.setPadding(16, 16, 16, 16);
         contentLayout.addView(infoText);
 
-        // Button to fetch verses list
         Button versesButton = new Button(this);
         versesButton.setText("View Verses List");
         versesButton.setLayoutParams(createButtonLayoutParams());
-        versesButton.setOnClickListener(v -> fetchVersesListDisplay(bible, chapter)); // Changed from fetchVerses
+        versesButton.setOnClickListener(v -> fetchVersesListDisplay(bible, chapter));
         contentLayout.addView(versesButton);
 
-        // Button to fetch passage content
         Button passageButton = new Button(this);
         passageButton.setText("Read Full Chapter");
         passageButton.setLayoutParams(createButtonLayoutParams());
@@ -327,9 +313,8 @@ public class MainActivity extends AppCompatActivity {
         contentLayout.addView(passageButton);
     }
 
-    // Renamed from fetchVerses and modified
     private void fetchVersesListDisplay(Bible bible, Chapter chapter) {
-        updateNavigationState(NavigationState.VERSES_LIST); // New specific state
+        updateNavigationState(NavigationState.VERSES_LIST);
         headerTextView.setText("Verses in " + chapter.getReference());
         clearContent();
         showLoadingMessage("Loading verses...");
@@ -339,12 +324,11 @@ public class MainActivity extends AppCompatActivity {
             public void onSuccess(Verse[] verses) {
                 runOnUiThread(() -> {
                     clearContent();
-
                     if (verses == null || verses.length == 0) {
                         showErrorMessage("No verses found in this chapter.");
                         return;
                     }
-
+                   
                     TextView infoText = new TextView(MainActivity.this);
                     infoText.setText("Found " + verses.length + " verses (click to view content):");
                     infoText.setTextSize(14);
@@ -353,12 +337,10 @@ public class MainActivity extends AppCompatActivity {
                     contentLayout.addView(infoText);
 
                     for (Verse verse : verses) {
-                        // createVerseView will now make it clickable and take the full Verse object
                         Button verseButton = createVerseButton(verse);
                         contentLayout.addView(verseButton);
                     }
 
-                    // Optional: Add button to read full chapter from this screen too
                     Button readChapterButton = new Button(MainActivity.this);
                     readChapterButton.setText("Read Full Chapter Text");
                     readChapterButton.setLayoutParams(createButtonLayoutParams());
@@ -373,7 +355,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     private void fetchPassage(Bible bible, Chapter chapter) {
+        updateNavigationState(NavigationState.VERSES_OR_PASSAGE);
         headerTextView.setText("Reading " + chapter.getReference());
         clearContent();
         showLoadingMessage("Loading chapter content...");
@@ -383,8 +367,7 @@ public class MainActivity extends AppCompatActivity {
             public void onSuccess(Passage passage, Passage.Meta meta) {
                 runOnUiThread(() -> {
                     clearContent();
-
-                    // Passage info
+                   
                     TextView infoView = new TextView(MainActivity.this);
                     infoView.setText("Reference: " + passage.getReference() +
                             "\nVerses: " + passage.getVerseCount());
@@ -393,7 +376,6 @@ public class MainActivity extends AppCompatActivity {
                     infoView.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.darker_gray));
                     contentLayout.addView(infoView);
 
-                    // Passage content - MODIFIED PART
                     TextView contentView = new TextView(MainActivity.this);
                     String htmlContent = passage.getContent();
 
@@ -401,29 +383,22 @@ public class MainActivity extends AppCompatActivity {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                             contentView.setText(Html.fromHtml(htmlContent, Html.FROM_HTML_MODE_LEGACY));
                         } else {
-                            // noinspection deprecation
                             contentView.setText(Html.fromHtml(htmlContent));
                         }
-                        // Optional: If your HTML might contain <a> tags and you want them to be clickable
-                        // contentView.setMovementMethod(LinkMovementMethod.getInstance());
                     } else {
                         contentView.setText("No content available for this passage.");
                     }
-
                     contentView.setTextSize(16);
                     contentView.setPadding(16, 8, 16, 16);
-                    contentView.setLineSpacing(4, 1.2f); // Adjust line spacing as needed for readability
+                    contentView.setLineSpacing(4, 1.2f);
                     contentLayout.addView(contentView);
 
-                    // Copyright notice
                     if (passage.getCopyright() != null && !passage.getCopyright().isEmpty()) {
                         TextView copyrightView = new TextView(MainActivity.this);
-                        // The copyright itself might also contain HTML, apply the same logic if needed
                         String copyrightHtml = passage.getCopyright();
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                             copyrightView.setText(Html.fromHtml(copyrightHtml, Html.FROM_HTML_MODE_LEGACY));
                         } else {
-                            // noinspection deprecation
                             copyrightView.setText(Html.fromHtml(copyrightHtml));
                         }
                         copyrightView.setTextSize(12);
@@ -432,7 +407,6 @@ public class MainActivity extends AppCompatActivity {
                         contentLayout.addView(copyrightView);
                     }
 
-                    // Add button to view verse list
                     Button viewVersesButton = new Button(MainActivity.this);
                     viewVersesButton.setText("View Verses List");
                     viewVersesButton.setLayoutParams(createButtonLayoutParams());
@@ -447,7 +421,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    // UI Helper Methods
+
+   
     private Button createBibleButton(Bible bible) {
         Button button = new Button(this);
         String buttonText = bible.getName();
@@ -467,7 +442,10 @@ public class MainActivity extends AppCompatActivity {
         Button button = new Button(this);
         String buttonText = book.getName();
         if (book.getChapters() != null) {
-            buttonText += "\n(" + book.getChapters().size() + " chapters)";
+           
+           
+           
+           
         }
         button.setText(buttonText);
         button.setLayoutParams(createButtonLayoutParams());
@@ -489,52 +467,147 @@ public class MainActivity extends AppCompatActivity {
         return button;
     }
 
-    // Was createVerseView (TextView), now createVerseButton (Button)
     private Button createVerseButton(Verse verse) {
         Button button = new Button(this);
-        button.setText(verse.getReference()); // e.g., "John 3:16"
-        button.setLayoutParams(createButtonLayoutParams()); // Use existing layout params for consistency
+        button.setText(verse.getReference());
+        button.setLayoutParams(createButtonLayoutParams());
         button.setOnClickListener(v -> {
-            Toast.makeText(this, "Showing: " + verse.getReference(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Loading: " + verse.getReference(), Toast.LENGTH_SHORT).show();
             showSingleVerseContent(verse);
         });
         return button;
     }
-    private void showSingleVerseContent(Verse verse) {
-        selectedVerse = verse; // Store if needed for other actions, or just use the passed 'verse'
-        updateNavigationState(NavigationState.SINGLE_VERSE_DISPLAY);
-        headerTextView.setText(verse.getReference());
-        clearContent();
 
-        if (verse.getContent() == null || verse.getContent().isEmpty()) {
-            showErrorMessage("No content available for this verse.");
+   
+    private void showSingleVerseContent(Verse initialVerseFromList) {
+        if (selectedBible == null) {
+            Toast.makeText(this, "Error: Bible context not available.", Toast.LENGTH_LONG).show();
             return;
         }
-
-        // TextView to display the verse content
-        TextView verseContentView = new TextView(this);
-        String htmlContent = verse.getContent();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            verseContentView.setText(Html.fromHtml(htmlContent, Html.FROM_HTML_MODE_LEGACY));
-        } else {
-            // noinspection deprecation
-            verseContentView.setText(Html.fromHtml(htmlContent));
+        if (initialVerseFromList == null || initialVerseFromList.getId() == null) {
+            Toast.makeText(this, "Error: Verse data not available.", Toast.LENGTH_LONG).show();
+            return;
         }
-        // Optional: if verse HTML contains links
-        // verseContentView.setMovementMethod(LinkMovementMethod.getInstance());
-
-        verseContentView.setTextSize(18); // Slightly larger for focused reading
-        verseContentView.setPadding(16, 16, 16, 16);
-        verseContentView.setLineSpacing(6, 1.3f); // Adjust for readability
-        contentLayout.addView(verseContentView);
-
-        // Optionally, add chapter's copyright if available and relevant here
-        // This depends on your `Passage` object structure or if `Verse` also has copyright
-        // For simplicity, we might omit it here or fetch the chapter's full passage metadata
-        // if copyright is crucial at the single verse display level.
-        // For now, let's assume the chapter's copyright (shown with full passage) covers it.
+       
+        fetchAndDisplaySingleVerse(selectedBible.getId(), initialVerseFromList.getId());
     }
+
+   
+    private void fetchAndDisplaySingleVerse(String bibleId, String verseId) {
+        updateNavigationState(NavigationState.SINGLE_VERSE_DISPLAY);
+        clearContent();
+       
+        headerTextView.setText("Loading Verse...");
+        showLoadingMessage("Loading verse " + verseId + "...");
+
+        apiClient.getSingleVerse(bibleId, verseId, new BibleApiClient.SingleVerseCallback() {
+            @Override
+            public void onSuccess(SingleVerse singleVerseData, SingleVerse.Meta meta) {
+                runOnUiThread(() -> {
+                    currentDisplayingVerse = singleVerseData;
+                    clearContent();
+
+                    if (singleVerseData == null) {
+                        headerTextView.setText("Verse Error");
+                        showErrorMessage("Failed to load verse data.");
+                        addPrevNextButtonsToLayout(null, null);
+                        return;
+                    }
+
+                    headerTextView.setText(singleVerseData.getReference() != null ? singleVerseData.getReference() : "Verse");
+
+                    if (singleVerseData.getContent() == null || singleVerseData.getContent().isEmpty()) {
+                        showErrorMessage("No content available for this verse: " + singleVerseData.getReference());
+                        addPrevNextButtonsToLayout(singleVerseData.getPrevious(), singleVerseData.getNext());
+                        return;
+                    }
+
+                    TextView verseContentView = new TextView(MainActivity.this);
+                    String htmlContent = singleVerseData.getContent();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        verseContentView.setText(Html.fromHtml(htmlContent, Html.FROM_HTML_MODE_LEGACY));
+                    } else {
+                        verseContentView.setText(Html.fromHtml(htmlContent));
+                    }
+                    verseContentView.setTextSize(18);
+                    verseContentView.setPadding(16, 16, 16, 16);
+                    verseContentView.setLineSpacing(6, 1.3f);
+                    contentLayout.addView(verseContentView);
+
+                    addPrevNextButtonsToLayout(singleVerseData.getPrevious(), singleVerseData.getNext());
+
+                    if (singleVerseData.getCopyright() != null && !singleVerseData.getCopyright().isEmpty()) {
+                        TextView copyrightView = new TextView(MainActivity.this);
+                        String copyrightHtml = singleVerseData.getCopyright();
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            copyrightView.setText(Html.fromHtml(copyrightHtml, Html.FROM_HTML_MODE_LEGACY));
+                        } else {
+                            copyrightView.setText(Html.fromHtml(copyrightHtml));
+                        }
+                        copyrightView.setTextSize(12);
+                        copyrightView.setPadding(16, 8, 16, 16);
+                        copyrightView.setTextColor(ContextCompat.getColor(MainActivity.this, android.R.color.darker_gray));
+                        contentLayout.addView(copyrightView);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    currentDisplayingVerse = null;
+                    clearContent();
+                    headerTextView.setText("Verse Error");
+                    showErrorMessage("Error loading verse: " + error);
+                    addPrevNextButtonsToLayout(null, null);
+                });
+            }
+        });
+    }
+
+    private void addPrevNextButtonsToLayout(SingleVerse.Navigation prevNav, SingleVerse.Navigation nextNav) {
+        LinearLayout navButtonLayout = new LinearLayout(this);
+        navButtonLayout.setOrientation(LinearLayout.HORIZONTAL);
+        navButtonLayout.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        navButtonLayout.setPadding(16, 24, 16, 16);
+
+       
+        Button prevButton = new Button(this);
+        prevButton.setText("<< Previous");
+        LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+        buttonParams.setMarginEnd(8);
+        prevButton.setLayoutParams(buttonParams);
+
+        if (prevNav != null && prevNav.getId() != null && selectedBible != null) {
+            prevButton.setEnabled(true);
+            prevButton.setOnClickListener(v -> fetchAndDisplaySingleVerse(selectedBible.getId(), prevNav.getId()));
+        } else {
+            prevButton.setEnabled(false);
+        }
+        navButtonLayout.addView(prevButton);
+
+       
+        Button nextButton = new Button(this);
+        nextButton.setText("Next >>");
+        LinearLayout.LayoutParams nextButtonParams = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+        nextButtonParams.setMarginStart(8);
+        nextButton.setLayoutParams(nextButtonParams);
+
+        if (nextNav != null && nextNav.getId() != null && selectedBible != null) {
+            nextButton.setEnabled(true);
+            nextButton.setOnClickListener(v -> fetchAndDisplaySingleVerse(selectedBible.getId(), nextNav.getId()));
+        } else {
+            nextButton.setEnabled(false);
+        }
+        navButtonLayout.addView(nextButton);
+
+        contentLayout.addView(navButtonLayout);
+    }
+
 
     private LinearLayout.LayoutParams createButtonLayoutParams() {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -555,11 +628,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showErrorMessage(String message) {
-        clearContent();
+       
         TextView errorText = new TextView(this);
         errorText.setText(message);
         errorText.setTextSize(16);
-        errorText.setPadding(16, 32, 16, 32);
+        errorText.setPadding(16, 32, 16, 16);
         errorText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
         errorText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
         contentLayout.addView(errorText);

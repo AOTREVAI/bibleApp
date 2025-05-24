@@ -10,7 +10,7 @@ public class Verse {
 
     private String content;
 
-    // Getters and Setters
+    
     public String getId() {
         return id;
     }
@@ -58,7 +58,7 @@ public class Verse {
         this.reference = reference;
     }
     public String getContent() {
-        return content; // Ensure this returns the HTML content
+        return content; 
     }
 
 }
