@@ -11,16 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import android.text.Html;
 import android.os.Build;
-// Optional, if your HTML content might contain links you want to be clickable
-// import android.text.method.LinkMovementMethod;
-import com.example.bibbia2.BibleApiClient;
-import com.example.bibbia2.Bible;
-import com.example.bibbia2.Book;
-import com.example.bibbia2.Chapter;
-import com.example.bibbia2.Passage;
-import com.example.bibbia2.Verse;
-// Import SingleVerse for the new functionality
-import com.example.bibbia2.SingleVerse;
+
 
 
 public class MainActivity extends AppCompatActivity {
